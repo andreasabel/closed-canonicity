@@ -1,4 +1,5 @@
 {-# OPTIONS --postfix-projections #-}
+{-# OPTIONS --show-irrelevant #-}
 
 -- Type theory with booleans
 
@@ -11,9 +12,9 @@ open import Data.Product using (∃; _×_; _,_; proj₁; proj₂)
 open import Data.Unit using (⊤)
 
 open import Function using (id; _on_)
-open import Function.Bijection using (Bijective; Bijection); open Bijection using (to; bijective; surjection); open Bijective using (injective; surjective)
+open import Function.Bijection using (Bijective; Bijection; _∘_); open Bijection using (to; bijective; surjection); open Bijective using (injective; surjective)
 open import Function.Surjection using (Surjective; Surjection); open Surjection using (from; from-to);  open Surjective using (right-inverse-of)
-open import Function.Equality using (_⟶_; _⟨$⟩_)
+open import Function.Equality using (_⟶_; _⟨$⟩_; _⇨_)
 
 open import Relation.Binary using (Setoid)
 import Relation.Binary.On as On
@@ -186,6 +187,10 @@ _⊢ₛ_≡_∷_ : ∀{n m} (Γ : Cxt n) (σ σ' : Sub n m) (Δ : Cxt m) → Set
 Γ ⊢ₛ σ ≡ σ' ∷ ε = ⊤
 Γ ⊢ₛ σ ≡ σ' ∷ (Δ , a) = (Γ ⊢ₛ tail σ ≡ tail σ' ∷ Δ) × (Γ ⊢ head σ ≡ head σ' ∷ sub (tail σ) a)
 
+reflₛ : ∀{n m} {Γ : Cxt n} {σ : Sub n m} (Δ : Cxt m) (ds : Γ ⊢ₛ σ ∷ Δ) → Γ ⊢ₛ σ ≡ σ ∷ Δ
+reflₛ ε _ = _
+reflₛ (Δ , a) (ds , du) = reflₛ Δ ds , refl du
+
 -- Closed terms of type a
 
 Term : (a : Exp 0) → Setoid lzero lzero
@@ -211,7 +216,10 @@ record Type l (a : Exp 0) : Set (level (1 + l)) where
       (dt' : ε ⊢ t' ∷ a)
       (ett' : ε ⊢ t ≡ t' ∷ a) →
       Bijection (intp dt) (intp dt')  -- This includes irrelevance of dt
-   --  BUT NOT IRRELEVANCE OF ett' !!
+      --  BUT NOT IRRELEVANCE OF ett' !!
+    -- "K axiom" for identical terms
+    idc : ∀{t} (d : ε ⊢ t ∷ a) (e : ε ⊢ t ≡ t ∷ a) (i : intp d .Setoid.Carrier) → intp d .Setoid._≈_ (bij d d e .to ⟨$⟩ i) i
+
 open Type
 
 -- Candidates
@@ -265,6 +273,48 @@ cast-cast' : ∀{l a} (A : Type l a) {t t'} (dt : ε ⊢ t ∷ a) (dt' : ε ⊢ 
   → CandEq A dt' (cast A dt dt' ett' (cast' A dt dt' ett' i)) i
 cast-cast' A dt dt' ett' i = (A .bij dt dt' ett') .bijective .surjective .right-inverse-of i
 
+-- Bijection equality
+
+-- There is several equivalent ways to define bijection equality.
+-- (f : A ≅ B : g) ≅ (f' : A ≅ B : g') holds iff
+--  1. f ≈ f' : A ≅ B
+--  2. g ≅ g' : B ≅ A
+--  3. f : A ≅ B : g'
+--  4. f' : A ≅ B : g
+
+-- This could be in the standard library:
+
+bijectionSetoid : ∀ {a a' b b'} (A : Setoid a a') (B : Setoid b b') → Setoid _ _
+bijectionSetoid A B .Setoid.Carrier = Bijection A B
+bijectionSetoid A B .Setoid._≈_ φ ψ = (A ⇨ B) .Setoid._≈_ (φ .to) (ψ .to)
+bijectionSetoid A B .Setoid.isEquivalence = On.isEquivalence to ((A ⇨ B) .Setoid.isEquivalence)
+
+BijectionEq : ∀ {a a' b b'} {A : Setoid a a'} {B : Setoid b b'} (φ ψ : Bijection A B) → Set _
+BijectionEq {A = A} {B = B} φ ψ = bijectionSetoid A B .Setoid._≈_ φ ψ
+
+_≃_ : ∀ {a a' b b'} {A : Setoid a a'} {B : Setoid b b'} (φ ψ : Bijection A B) → Set _
+_≃_ = BijectionEq
+
+-- Semantic type equality
+
+record TypeEq {l a b} -- (da : ε ⊢ a ∷ univ l) (db : ε ⊢ b ∷ univ l) (e : ε ⊢ a ≡ b ∷ univ l)
+              (A : Type l a) (B : Type l b) : Set (level l) where
+  field
+    Bij : ∀{t} (dta : ε ⊢ t ∷ a) (dtb : ε ⊢ t ∷ b) → Bijection (A .intp dta) (B .intp dtb)
+    -- Naturality condition: Combining this bijection commutes with the bijections of A and B
+    nat : ∀ {t t'}
+      (dta  : ε ⊢ t  ∷ a)
+      (dta' : ε ⊢ t' ∷ a)
+      (eta  : ε ⊢ t ≡ t' ∷ a)
+      (dtb  : ε ⊢ t  ∷ b)
+      (dtb' : ε ⊢ t' ∷ b)
+      (etb  : ε ⊢ t ≡ t' ∷ b) →
+        (Bij dta' dtb' ∘ A .bij dta dta' eta)
+        ≃ (B .bij dtb dtb' etb ∘ Bij dta dtb)
+      -- (A .intp dta ⇨ B .intp dtb') .Setoid._≈_
+      --   ((Bij dta' dtb' ∘ A .bij dta dta' eta) .to)
+      --   ((B .bij dtb dtb' etb ∘ Bij dta dtb) .to)
+open TypeEq
 
 -- castCancel : ∀{l a} (A : Type l a) {t t'} (dt : ε ⊢ t ∷ a) (dt' : ε ⊢ t' ∷ a) (ett' : ε ⊢ t ≡ t' ∷ a) (et't : ε ⊢ t' ≡ t ∷ a) (i : Cand A dt')
 --   → CandEq A dt' (cast A dt dt' ett' (cast A dt' dt et't i)) i
@@ -278,23 +328,63 @@ cast-cast' A dt dt' ett' i = (A .bij dt dt' ett') .bijective .surjective .right-
 --          ; isEquivalence =  {! λ tdt → T .intp (proj₂ tdt) .Setoid.isEquivalence !}
 --          }
 
-
 -- Interpretation of the function space
 
 record Fam {l a} (A : Type l a) (b : Exp 0) : Set (level (1 + l)) where
   field
     intp : ∀ {u} {du : ε ⊢ u ∷ a} (iu : Cand A du) → Type l (app b u)
     bij  : ∀ {u u'}
-      {du : ε ⊢ u ∷ a}
-      {du' : ε ⊢ u' ∷ a}
-      (iu : Cand A du)
+      {du   : ε ⊢ u ∷ a}
+      {du'  : ε ⊢ u' ∷ a}
       (euu' : ε ⊢ u ≡ u' ∷ a)
-      (let iu' = A .bij du du' euu' .to  ⟨$⟩ iu)
+      {iu   : Cand A du}
+      {iu'  : Cand A du'}
+      (eiu  : CandHEq A du du' euu' iu iu')
+      -- (let iu' = A .bij du du' euu' .to  ⟨$⟩ iu)
       {t} (dt : ε ⊢ t ∷ app b u) (dt' : ε ⊢ t ∷ app b u') →
       Bijection (intp iu .Type.intp dt) (intp iu' .Type.intp dt')
       -- We do not need to generalize this to ε ⊢ t ≡ t' ∷ a
       -- since we already have this in Type
+    -- idc : ∀ {u}
+    --   {du : ε ⊢ u ∷ a}
+    --   (euu : ε ⊢ u ≡ u ∷ a)
+    --   (iu  : Cand A du)
+    --   (iu' : Cand A du)
+    --   (φ   : CandHEq A du du euu iu iu')
+    --   {t} (dt dt' : ε ⊢ t ∷ app b u) (j : Cand (intp iu') dt) →
+    --   intp iu' .Type.intp dt' .Setoid._≈_ (bij euu iu iu' φ dt dt' .to ⟨$⟩ j) j
+    -- -- idc : ∀ {u}
+    -- --   {du : ε ⊢ u ∷ a}
+    -- --   (euu : ε ⊢ u ≡ u ∷ a)
+    -- --   (iu  : Cand A du)
+    -- --   (iu' : Cand A du)
+    -- --   (φ   : CandHEq A du du euu iu iu')
+    -- --   {t} (dt dt' : ε ⊢ t ∷ app b u) (j : Cand (intp iu') dt) →
+    -- --   intp iu' .Type.intp dt' .Setoid._≈_ (bij euu iu iu' φ dt dt' .to ⟨$⟩ j) j
 open Fam
+
+-- Equal families over the same domain (warm-up)
+
+record FamEq0 {l a} (A : Type l a) {b b'} (B : Fam A b) (B' : Fam A b') : Set (level l) where
+  field
+    TEq : ∀ {u} {du : ε ⊢ u ∷ a} (iu : Cand A du) → TypeEq (B .intp iu) (B' .intp iu)
+    nat : ∀ {u₁ u₂}
+      {du₁  : ε ⊢ u₁ ∷ a}
+      {du₂  : ε ⊢ u₂ ∷ a}
+      (eu₁₂ : ε ⊢ u₁ ≡ u₂ ∷ a)
+      {iu₁  : Cand A du₁}
+      {iu₂  : Cand A du₂}
+      (ei₁₂ : CandHEq A du₁ du₂ eu₁₂ iu₁ iu₂) {t}
+      (dt₁  : ε ⊢ t ∷ app b u₁) (dt₁' : ε ⊢ t ∷ app b' u₁)
+      (dt₂  : ε ⊢ t ∷ app b u₂) (dt₂' : ε ⊢ t ∷ app b' u₂) →
+      -- (φ : Bijection (Cand (B  .intp iu₁) dt) (Cand (B  .intp iu₂) dt')
+      -- (ψ : Bijection (Cand (B' .intp iu₁) dt) (Cand (B' .intp iu₂) dt') →
+      (TEq iu₂ .Bij dt₂ dt₂' ∘ B .bij eu₁₂ ei₁₂ dt₁ dt₂)
+      ≃ (B' .bij eu₁₂ ei₁₂ dt₁' dt₂' ∘ TEq iu₁ .Bij dt₁ dt₁')
+
+record FamEq {l a a'} {A : Type l a} {A' : Type l a'} (A=A' : TypeEq A A') {b b'} (B : Fam A b) (B' : Fam A' b') : Set (level l) where
+  -- field
+    -- Bij :
 
 ⟦fun⟧ : ∀{a b l} (A : Type l a) (B : Fam A b) → Type l (fun a b)
 ⟦fun⟧ {a} A B .intp {t} dt .Setoid.Carrier  = ∀ {u} {du : ε ⊢ u ∷ a} (iu : Cand A du) → Cand   (B .intp iu) (app dt du)
@@ -308,6 +398,10 @@ open Fam
 ⟦fun⟧ {a} A B .bij dt dt' ett' .bijective .surjective .Surjective.from ._⟨$⟩_                   f  {u} {du} iu = cast'      (B .intp iu) (app dt du) (app dt' du) (app ett' (refl du)) (f  iu)
 ⟦fun⟧ {a} A B .bij dt dt' ett' .bijective .surjective .Surjective.from .Function.Equality.cong eq {u} {du} iu = cast'Eq    (B .intp iu) (app dt du) (app dt' du) (app ett' (refl du)) (eq iu)
 ⟦fun⟧ {a} A B .bij dt dt' ett' .bijective .surjective .Surjective.right-inverse-of             f  {u} {du} iu = cast-cast' (B .intp iu) (app dt du) (app dt' du) (app ett' (refl du)) (f  iu)
+⟦fun⟧ {a} A B .idc dt ett                                                                      f  {u} {du} iu = B .intp iu .idc (app dt du) (app ett (refl du)) (f iu)
+
+⟦fun≡fun⟧ : ∀ {a b l} {A : Type l a} {B : Fam A b} {a' b'} {A' : Type l a'} {B' : Fam A' b'} (A=A' : TypeEq A A') (B=B' : FamEq A=A' B B') → TypeEq (⟦fun⟧ A B) (⟦fun⟧ A' B')
+⟦fun≡fun⟧ = {!!}
 
 -- Interpretation of application is just application of the meta-theory
 
@@ -331,11 +425,25 @@ open Fam
 ⟦bool⟧ .bij dt dt' ett' .bijective .surjective .Surjective.from .Function.Equality.cong = id
 ⟦bool⟧ .bij dt dt' ett' .bijective .surjective .Surjective.right-inverse-of (b , eb)    = PE.refl
 
+⟦bool⟧ .idc d e i = PE.refl
+
+-- Equality of type bool to itself
+⟦bool≡bool⟧ : TypeEq ⟦bool⟧ ⟦bool⟧
+⟦bool≡bool⟧ .TypeEq.Bij dta dtb = Function.Bijection.id
+⟦bool≡bool⟧ .TypeEq.nat dta dta' eta dtb dtb' etb = id
+-- ⟦bool≡bool⟧ .TypeEq.Bij dta dtb .to ._⟨$⟩_ (b , db) = b , db
+-- ⟦bool≡bool⟧ .TypeEq.Bij {t} dta dtb .to .Function.Equality.cong {b , db} {b' , db'} eq = eq
+-- ⟦bool≡bool⟧ .TypeEq.Bij dta dtb .bijective .injective {b , db} {b' , db'} eq = eq
+-- ⟦bool≡bool⟧ .TypeEq.Bij dta dtb .bijective .surjective .Surjective.from ._⟨$⟩_ (b , db) = b , db
+-- ⟦bool≡bool⟧ .TypeEq.Bij dta dtb .bijective .surjective .Surjective.from .Function.Equality.cong eq = eq
+-- ⟦bool≡bool⟧ .TypeEq.Bij dta dtb .bijective .surjective .right-inverse-of (b , db) = PE.refl
+-- ⟦bool≡bool⟧ .TypeEq.nat dta dta' eta dtb dtb' etb {b , db} {b' , db'} eq = eq
+
 -- Interpretation of bits
 
 ⟦bit⟧ : ∀ b → Cand ⟦bool⟧ (bit b)
 ⟦bit⟧ b = b , bit b
-
+{-
 -- Semantics of contexts
 
 -- We have to restrict the level of the context, since we do not have Setω
@@ -378,6 +486,17 @@ Condsym G d eq = G .intp d .Setoid.sym eq
 Condtrans : ∀{l n} {Γ : Cxt n} (G : Con l Γ) {σ} (d : ε ⊢ₛ σ ∷ Γ) {i j k : Cond G d} (eq : CondEq G d i j) (eq' : CondEq G d j k) → CondEq G d i k
 Condtrans G d eq eq' = G .intp d .Setoid.trans eq eq'
 
+cost : ∀{l n} {Γ : Cxt n} (G : Con l Γ) {σ σ'} (dσ : ε ⊢ₛ σ ∷ Γ) (dσ' : ε ⊢ₛ σ' ∷ Γ) (eσσ' : ε ⊢ₛ σ ≡ σ' ∷ Γ) (γ : Cond G dσ) →  Cond G dσ'
+cost G d d' e γ = G .bij d d' e .to ⟨$⟩ γ
+
+CondHEq : ∀{l n} {Γ : Cxt n} (G : Con l Γ) {σ σ'} (dσ : ε ⊢ₛ σ ∷ Γ) (dσ' : ε ⊢ₛ σ' ∷ Γ) (eσσ' : ε ⊢ₛ σ ≡ σ' ∷ Γ) (γ : Cond G dσ) (γ' : Cond G dσ') → Set (level l)
+CondHEq G dσ dσ' eσσ' γ γ' = CondEq G dσ' (cost G dσ dσ' eσσ' γ) γ'
+
+condHEq : ∀{l n} {Γ : Cxt n} (G : Con l Γ) {σ} (d : ε ⊢ₛ σ ∷ Γ) (γ γ' : Cond G d) (eq : CondEq G d γ γ') → CondHEq G d d (reflₛ Γ d) γ γ'
+condHEq {l} {n} {Γ} G {σ} d γ γ' eq = {!!}
+
+
+
 -- Empty context
 
 ⟦ε⟧ : ∀{l} → Con l ε
@@ -402,9 +521,10 @@ record SFam {l n} {Γ : Cxt n} (G : Con l Γ) (b : Exp n) : Set (level (1 + l)) 
       {ds' : ε ⊢ₛ σ' ∷ Γ}
       (ess' : ε ⊢ₛ σ ≡ σ' ∷ Γ)
       (γ : Cond G ds)
-      -- (γ' : Cond G ds')
+      (γ' : Cond G ds')
+      (h : CondHEq G ds ds' ess' γ γ')
       -- Need heterogenous equality!
-      (let γ' = G .bij ds ds' ess' .to  ⟨$⟩ γ)
+      -- (let γ' = G .bij ds ds' ess' .to  ⟨$⟩ γ)
       {t} (dt : ε ⊢ t ∷ sub σ b) (dt' : ε ⊢ t ∷ sub σ' b) →
       Bijection (intp γ .Type.intp dt) (intp γ' .Type.intp dt')
       -- We do not need to generalize this to ε ⊢ t ≡ t' ∷ Γ
@@ -412,16 +532,18 @@ record SFam {l n} {Γ : Cxt n} (G : Con l Γ) (b : Exp n) : Set (level (1 + l)) 
 open SFam
 
 hcast : ∀ {l n} {Γ : Cxt n} (G : Con l Γ) {b} (B : SFam G b) {σ} {ds : ε ⊢ₛ σ ∷ Γ} (γ γ' : Cond G ds) (φ : CondEq G ds γ γ')
-  {u : Exp n} (du : ε ⊢ sub σ u ∷ sub σ b)
+  {u} (du : ε ⊢ u ∷ sub σ b)
   → (i : Cand (B .intp γ) du)
   → Cand (B .intp γ') du
-hcast {l} {n} {Γ} G {b} B {σ} {ds} γ γ' φ {u} du i = {!!}
+hcast {l} {n} {Γ} G {b} B {σ} {ds} γ γ' φ du i = B .bij (reflₛ Γ ds) γ γ' {!!} du du .to ⟨$⟩ i
 
 
 Sigma : ∀{l n} {Γ : Cxt n} (G : Con l Γ) {b : Exp n} (B : SFam G b) → Con l (Γ , b)
-Sigma G B .intp (ds , du) .Setoid.Carrier = ∃ λ (γ : Cond G ds) → Cand (B .intp γ) du
-Sigma G B .intp (ds , du) .Setoid._≈_ (γ , i) (γ' , i') = ∃ λ (φ : CondEq G ds γ γ') → CandEq (B .intp γ') du {!B .bij i !} i'
-Sigma G B .intp (ds , du) .Setoid.isEquivalence = {!!}
+Sigma G B .intp (ds , du) .Setoid.Carrier               = ∃ λ (γ : Cond G ds) → Cand (B .intp γ) du
+Sigma G B .intp {σ} (ds , du) .Setoid._≈_ (γ , i) (γ' , i') = ∃ λ (φ : CondEq G ds γ γ') → CandEq (B .intp γ') du (hcast G B γ γ' φ du i) i'
+Sigma {l} {n} {Γ} G {b} B .intp {σ} (ds , du) .Setoid.isEquivalence .Relation.Binary.IsEquivalence.refl {γ , i} = Condrefl G ds γ , {!!}
+Sigma {l} {n} {Γ} G {b} B .intp {σ} (ds , du) .Setoid.isEquivalence .Relation.Binary.IsEquivalence.sym = {!!}
+Sigma {l} {n} {Γ} G {b} B .intp {σ} (ds , du) .Setoid.isEquivalence .Relation.Binary.IsEquivalence.trans = {!!}
 Sigma G B .bij  (ds , du) (ds' , du') ess' .to ._⟨$⟩_ = {!!}
 Sigma G B .bij  (ds , du) (ds' , du') ess' .to .Function.Equality.cong = {!!}
 Sigma G B .bij  (ds , du) (ds' , du') ess' .bijective .injective x₁ = {!!}
@@ -432,3 +554,7 @@ Sigma G B .bij  (ds , du) (ds' , du') ess' .bijective .surjective .right-inverse
 -- Con : ∀{l n} {Γ : Cxt n} (dΓ : l ⊢ Γ) → Set (level (1 + l))
 -- Con ε = {!!}
 -- Con (cext dΓ da) = {!!}
+
+
+-- -}
+-- -}
