@@ -47,16 +47,6 @@ els (sup f) = f
 
 syntax els a i = a ` i
 
--- Intensional elementhood
-
-_∈∈_ : ∀{ℓ} (a b : set ℓ) → Type ℓ
-a ∈∈ sup f = Im f a -- ∃ λ i → f i ≡ a
-
--- Equality over intensional elementhood
-
-_≡≡_ : ∀{ℓ} (a b : set ℓ) → Type ℓ
-sup f ≡≡ b = ∀ i → f i ∈∈ b
-
 -- Elementhood and extensional equality (recursive)
 
 mutual
@@ -139,6 +129,35 @@ found {ℓ} {sup f} {b} p (i , q , _) = found q (p i)
 irr : ∀{ℓ} {a : set ℓ} → a ∉ a
 irr = found (⊂-refl _)
 
+-- Predicates over sets (need to respect equality)
+
+IsPred : ∀ {ℓ} (P : set ℓ → Type ℓ) → Type (lsuc ℓ)
+IsPred {ℓ} P = ∀{a b : set ℓ} (e : a ≅ b) (p : P a) → P b
+
+record Pred ℓ : Type (lsuc ℓ) where
+  constructor pred
+  field
+    _!_  : set ℓ → Type ℓ
+    resp : IsPred _!_
+
+-- Get a selection function from ⊂
+
+sel-from-⊂ : ∀{ℓ} {a b : set ℓ} (p : a ⊂ b) → Br a → Br b
+sel-from-⊂ {a = sup f} {b = sup g} p i = proj₁ (p i)
+
+-- Restriction by selecting elements
+
+select : ∀{ℓ} (a : set ℓ) {D : Type ℓ} (sel : D → Br a) → set ℓ
+select (sup f) sel = sup λ d → f (sel d)
+
+select-elim : ∀{ℓ} (a : set ℓ) {D : Type ℓ} (sel : D → Br a) → select a sel ⊂ a
+select-elim (sup f) sel d = sel d , ≅-refl _
+
+select-sel : ∀{ℓ} {a b : set ℓ} (p : a ⊂ b) → select b (sel-from-⊂ p) ≅ a
+select-sel {a = sup f} {b = sup g} p =
+  (λ i → i , ≅-sym (proj₂ (p i))) ,
+  (λ i → i , proj₂ (p i))
+
 -- Constructions on sets
 ------------------------------------------------------------------------
 
@@ -148,8 +167,20 @@ irr = found (⊂-refl _)
 ∅ {ℓ} = sup {I = Empty} λ()
   where data Empty : Type ℓ where
 
-∅-elim : ∀{ℓ} {c : set ℓ} → c ∉ ∅
+IsEmpty : ∀{ℓ} (a : set ℓ) → Type (lsuc ℓ)
+IsEmpty {ℓ} a = ∀ {c : set ℓ} → c ∉ a
+
+∅-elim : ∀{ℓ} → IsEmpty (∅ {ℓ})
 ∅-elim (() , _)
+
+IsInhabited : ∀{ℓ} (a : set ℓ) → Type (lsuc ℓ)
+IsInhabited a = ∃ λ c → c ∈ a
+
+emptyNotInhabited : ∀{ℓ} {a : set ℓ} → IsEmpty a → ¬ IsInhabited a
+emptyNotInhabited p (c , q) = p q
+
+inhabitedNotEmpty : ∀{ℓ} {a : set ℓ} → IsInhabited a → ¬ IsEmpty a
+inhabitedNotEmpty (c , q) p = p q
 
 -- Singleton set
 
@@ -165,6 +196,15 @@ sg-elim (_ , e) = e
 
 sg-cong : ∀{ℓ} {a b : set ℓ} (e : a ≅ b) → sg a ≅ sg b
 sg-cong e = (λ _ → _ , e) , (λ _ → _ , ≅-sym e)
+
+sg-inhabited : ∀{ℓ} {a : set ℓ} → IsInhabited (sg a)
+sg-inhabited {a = a} = a , sg-intro a
+
+SubSingleton : ∀{ℓ} (a b : set ℓ) → Type ℓ
+SubSingleton a b = a ⊂ sg b
+
+IsSg : ∀{ℓ} (a : set ℓ) → Type (lsuc ℓ)
+IsSg a = ∃ λ b → a ≅ sg b
 
 -- Putting two elements into a set
 -- Forms {a,b}; not to be confused with the tuple (a,b)
@@ -188,6 +228,9 @@ pair-elim (false , e) = inj₂ e
 pair-cong : ∀{ℓ} {a a' b b' : set ℓ} (p : a ≅ a') (q : b ≅ b') → pair a b ≅ pair a' b'
 pair-cong p q = (λ{ true → true , p       ; false → false , q      })
               , (λ{ true → true , ≅-sym p ; false → false , ≅-sym q})
+
+pair-inhabited : ∀{ℓ} {a b : set ℓ} → IsInhabited (pair a b)
+pair-inhabited {a = a} = a , true , ≅-refl a
 
 -- Union of two sets
 
@@ -227,36 +270,39 @@ a ∪ b = sup λ where
 
 -- Union of a family of sets
 
-⋃ : ∀{ℓ} {I : Type ℓ} (f : I → set ℓ) → set ℓ
-⋃ {ℓ} {I} f = sup {I = Σ I λ i → Br (f i)} λ p → f (proj₁ p) ` proj₂ p
+⋃ᶠ : ∀{ℓ} {I : Type ℓ} (f : I → set ℓ) → set ℓ
+⋃ᶠ {ℓ} {I} f = sup {I = Σ I λ i → Br (f i)} λ p → f (proj₁ p) ` proj₂ p
 
-⋃-intro : ∀{ℓ} {I : Type ℓ} (f : I → set ℓ) {c : set ℓ} {i : I} (p : c ∈ f i) → c ∈ ⋃ f
-⋃-intro f {c} {i} p = let
+⋃ᶠ-intro : ∀{ℓ} {I : Type ℓ} (f : I → set ℓ) {c : set ℓ} {i : I} (p : c ∈ f i) → c ∈ ⋃ᶠ f
+⋃ᶠ-intro f {c} {i} p = let
     j , e = ∈-elim p
   in (i , j) , e
 
-⋃-elim : ∀{ℓ} {I : Type ℓ} (f : I → set ℓ) {c : set ℓ} (p : c ∈ ⋃ f) → ∃ λ i → c ∈ f i
-⋃-elim _ ((i , j) , e) = i , ∈-intro (j , e)
+⋃ᶠ-elim : ∀{ℓ} {I : Type ℓ} (f : I → set ℓ) {c : set ℓ} (p : c ∈ ⋃ᶠ f) → ∃ λ i → c ∈ f i
+⋃ᶠ-elim _ ((i , j) , e) = i , ∈-intro (j , e)
 
-⋃-mon : ∀{ℓ} {I : Type ℓ} {f f' : I → set ℓ} (p : ∀ i → f i ⊂ f' i) → ⋃ f ⊂ ⋃ f'
-⋃-mon {f = f} {f'} p = ⊂-intro λ c∈⋃f → let
-    i , q = ⋃-elim f c∈⋃f
-  in ⋃-intro f' (⊂-elim (p i) q)
+⋃ᶠ-mon : ∀{ℓ} {I : Type ℓ} {f f' : I → set ℓ} (p : ∀ i → f i ⊂ f' i) → ⋃ᶠ f ⊂ ⋃ᶠ f'
+⋃ᶠ-mon {f = f} {f'} p = ⊂-intro λ c∈⋃ᶠf → let
+    i , q = ⋃ᶠ-elim f c∈⋃ᶠf
+  in ⋃ᶠ-intro f' (⊂-elim (p i) q)
 
-⋃-cong : ∀{ℓ} {I : Type ℓ} {f f' : I → set ℓ} (p : ∀ i → f i ≅ f' i) → ⋃ f ≅ ⋃ f'
-⋃-cong p = ⋃-mon (λ i → proj₁ (p i))
-          , ⋃-mon (λ i → proj₂ (p i))
+⋃ᶠ-cong : ∀{ℓ} {I : Type ℓ} {f f' : I → set ℓ} (p : ∀ i → f i ≅ f' i) → ⋃ᶠ f ≅ ⋃ᶠ f'
+⋃ᶠ-cong p = ⋃ᶠ-mon (λ i → proj₁ (p i))
+          , ⋃ᶠ-mon (λ i → proj₂ (p i))
 
--- Predicates over sets (need to respect equality)
+-- Union of a set of sets
 
-IsPred : ∀ {ℓ} (P : set ℓ → Type ℓ) → Type (lsuc ℓ)
-IsPred {ℓ} P = ∀{a b : set ℓ} (e : a ≅ b) (p : P a) → P b
+⋃ : ∀{ℓ} (a : set ℓ) → set ℓ
+⋃ (sup f) = ⋃ᶠ f
 
-record Pred ℓ : Type (lsuc ℓ) where
-  constructor pred
-  field
-    _!_  : set ℓ → Type ℓ
-    resp : ∀{a b : set ℓ} (e : a ≅ b) (p : _!_ a) → _!_ b
+⋃-intro : ∀{ℓ} {a b : set ℓ} (p : b ∈ a) → b ⊂ ⋃ a
+⋃-intro {a = sup f} (i , b≅fi) = ⊂-intro λ c∈b → let
+    j , d = ∈-elim (∈-congʳ c∈b b≅fi)
+  in (i , j) , d
+
+⋃-elim : ∀{ℓ} {a c : set ℓ} (p : c ∈ ⋃ a) → ∃ λ b → (b ∈ a) × (c ∈ b)
+⋃-elim {a = sup f} ((i , j) , e) = f i , (i , ≅-refl _) , ∈-intro (j , e)
+
 
 -- Comprehension (restriction)
 
@@ -292,6 +338,14 @@ a ∩ b = a ∣ (_∈ b)
 ∩-elimʳ ((i , j) , e) = ∈-congˡ e j
 
 -- Intersection of a non-empty family...
+
+⋂ᶠ : ∀{ℓ} {I : Type ℓ} (i : I) (f : I → set ℓ) → set ℓ
+⋂ᶠ i f = f i ∣ λ a → ∀ i′ → a ∈ f i′
+
+-- Intersection of an inhabited set
+
+⋂ : ∀{ℓ} (a : set ℓ) (inh : IsInhabited a) → set ℓ
+⋂ (sup f) (b , i , b≅fi) = ⋂ᶠ i f
 
 -- Covariant powerset
 
@@ -338,3 +392,17 @@ data Nat ℓ : Type ℓ where
 
 Pω : ∀{ℓ} (a : set ℓ) → set ℓ
 Pω {ℓ} a = Pow⁺ (Nat ℓ) a
+
+-- Tuples (Kuratowski, 1921)
+
+tup : ∀{ℓ} (a b : set ℓ) → set ℓ
+tup a b = pair (sg a) (pair a b)
+
+-- First projection
+-- π₁(p) = ⋃ ⋂ p
+
+fst : ∀{ℓ} (a : set ℓ) (inh : IsInhabited a) → set ℓ
+fst a inh = ⋃ (⋂ a inh)
+
+fst-tup : ∀{ℓ} {a b : set ℓ} → fst (tup a b) (pair-inhabited) ≅ a
+fst-tup = (λ i → {!!}) , {!!}
