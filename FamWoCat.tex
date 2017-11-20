@@ -1,0 +1,403 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+
+
+\title{Families without categories}
+\author{Andreas Abel}
+\date{20 November 2017}
+
+\input{macros}
+
+\newcommand{\pair}[2]{\langle#1,\,#2\rangle}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\emp}{\eps}
+%\newcommand{\emp}{\langle\rangle}
+\renewcommand{\seq}{\cdot}
+\newcommand{\ty}[1]{\lceil #1 \rceil}
+\renewcommand{\cxt}[1]{\lfloor #1 \rfloor}
+% \newcommand{\ty}[1]{\ulcorner #1 \urcorner}
+% \renewcommand{\cxt}[1]{\llcorner #1 \lrcorner}
+\newcommand{\SigT}[2]{\Sigma\,#1\,#2}
+\renewcommand{\PiT}[2]{\Pi\,#1\,#2}
+%\renewcommand{\cempty}{\varepsilon}
+%\renewcommand{\cempty}{\mathbf{1}}
+\renewcommand{\cempty}{\diamond}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We aim at a formulation type theory where substitutions are terms and
+contexts are $\Sigma$-types.
+\end{abstract}
+
+\section{Simple types}
+
+For simple types, such a description already exists, it is
+cartesian-closed categories (CCCs).
+
+Syntax.
+\[
+\begin{array}{lrl@{\qquad}l}
+  A,B,C,D & ::= & 1 \mid A \times B \mid A \to B & \mbox{types} \\
+  s,t,u,v & ::= & \tid \mid t \comp s \mid \emp \mid \pair{t_1}{t_2} \mid \pi_1 \mid \pi_2 \mid
+                \lambda t \mid \tapp & \mbox{terms}
+\end{array}
+\]
+We can define ordinary application $t\,u = \tapp \comp \pair t u$.
+
+Typing. \fbox{$C \der t : A$}
+\begin{gather*}
+  \ru{}{C \der \tid : C}
+\qquad
+  \ru{C \der t : A \qquad D \der s : C
+    }{D \der t \comp s : A}
+\\[2ex]
+  \ru{}{C \der \emp : 1}
+\qquad
+  \ru{C \der t_1 : A_1 \qquad
+      C \der t_2 : A_2
+    }{C \der \pair{t_1}{t_2} : A_1 \times A_2}
+\qquad
+  \ru{}{C \times A \der \pi_1 : C}
+\qquad
+  \ru{}{C \times A \der \pi_2 : A}
+\\[2ex]
+  \ru{C \times A \der t : B
+    }{C \der \lambda t : A \to B}
+\qquad
+  \ru{}{(A \to B) \times A \der \tapp : B}
+\qquad
+  \left(
+  \ru{C \der t : A \to B \qquad
+      C \der u : A
+    }{C \der t\,u : B}
+  \right)
+\end{gather*}
+
+Equality. \fbox{$C \der t = t' : A$} (We omit equivalence and
+congruence rules.)
+\begin{gather*}
+  \ru{C \der s : D
+    }{C \der \tid \comp s = s : D}
+\qquad
+  \ru{C \der s : D
+    }{C \der s \comp \tid = s : D}
+\\[2ex]
+  \ru{B \der r : A \qquad C \der s : B \qquad D \der t : C
+    }{D \der (r \comp s) \comp t = r \comp (s \comp t) : A}
+\\[2ex]
+  \ru{C \der t : 1
+    }{C \der t = \emp : 1}
+\qquad
+  \ru{
+    }{C \times A \der \tid = \pair{\pi_1}{\pi_2} : C \times A}
+\\[2ex]
+  \ru{C \der t_1 : A_1 \qquad C \der t_2 : A_2
+    }{C \der \pi_i \comp \pair{t_1}{t_2} = t_i : A_i}
+\qquad
+  \ru{C \der t_1 : A_1 \qquad C \der t_2 : A_2 \qquad D \der s : C
+    }{D \der \pair{t_1}{t_2} \comp s = \pair{t_1 \comp s}{t_2 \comp s} : A_1 \times A_2}
+\\[2ex]
+  \ru{C \times A \der t : B \qquad C \der u : A
+    }{C \der \tapp \comp \pair{\lambda t}{u} = t \comp \pair{\tid}{u} : B}
+\qquad
+  \ru{C \times A \der t : B \qquad D \der s : C
+    }{D \der \lambda t \comp s = \lambda.\, t \comp \pair{s \comp \pi_1}{\pi_2} : A \to B}
+\end{gather*}
+
+
+\section{Dependent types}
+
+Syntax.
+\[
+\begin{array}{lrl@{\qquad}l}
+  A,B,C & ::= & 1 \mid \SigT A B \mid \PiT A B % \mid \ty{\Gamma}
+    & \mbox{types (families over contexts)} \\
+  \Gamma, \Delta,\Phi & ::= & \cempty \mid \cext \Gamma A
+    & \mbox{contexts} \\
+\end{array}
+\]
+
+Contexts. \fbox{$\der \Gamma$}
+\begin{gather*}
+  \ru{}{\der \cempty}
+\qquad
+  \ru{\der \Gamma \qquad
+      \Gamma \der A
+    }{\der \cext \Gamma A}
+\end{gather*}
+
+Substitutions. \fbox{$\Gamma \der s : \Delta$}
+\begin{gather*}
+  \ru{\der \Gamma
+    }{\Gamma \der \tid : \Gamma}
+\qquad
+  \ru{\Delta \der s : \Phi \qquad \Gamma \der r : \Delta
+    }{\Gamma \der r \comp s : \Phi}
+\qquad
+  \ru{\der \Gamma
+    }{\Gamma \der \emp : \cempty}
+\\[2ex]
+  \ru{\Gamma \der A
+    }{\cext \Gamma A \der \pi_1 : \Gamma}
+\qquad
+  \ru{\Gamma \der s : \Delta \qquad \Gamma \der t : A[s]
+    }{\Gamma \der \pair s t : \cext \Delta A}
+\end{gather*}
+
+Types (families). \fbox{$\Gamma \der A$}  Implies $\der \Gamma$.
+\begin{gather*}
+  \ru{\der \Gamma
+    }{\Gamma \der 1}
+\qquad
+  \ru{\Gamma \der A \qquad
+      \cext \Gamma A \der B
+    }{\Gamma \der \SigT A B}
+\qquad
+  \ru{\Gamma \der A \qquad
+      \cext \Gamma A \der B
+    }{\Gamma \der \PiT A B}
+\qquad
+  \ru{\Gamma \der A \qquad \Delta \der s : \Gamma
+    }{\Delta \der A \comp s}
+\end{gather*}
+
+Terms (dependent morphisms). \fbox{$\Gamma \der t : A [s]$} where
+$\Delta \der A$ and $\Gamma \der s : \Delta$.
+\begin{gather*}
+  \ru{\Gamma \der A
+    }{\cext \Gamma A \der \pi_2 : A [\pi_1]}
+\qquad
+  \ru{\Gamma_0 \der A \qquad
+      \Gamma \der s_0 : \Gamma_0 \qquad
+      \Gamma \der t : A[s_0]   \qquad
+      \Delta \der s : \Gamma
+    }{\Delta \der t \comp s : A[s_0 \comp s]}
+\\[2ex]
+  \ru{\Gamma \der s : \Delta
+    }{\Gamma \der \emp : 1 [s]}
+\end{gather*}
+Rules to introduce and eliminate $\Sigma$ and $\Pi$ types.
+The following rule share the 3 premises
+\[
+      \Delta \der A \qquad
+      \cext \Delta A \der B \qquad
+      \Gamma \der s : \Delta \qquad
+\]
+\begin{gather*}
+  \ru{%
+      % \Delta \der A \qquad
+      % \cext \Delta A \der B \qquad
+      % \Gamma \der s : \Delta \qquad
+      \Gamma \der u : A [s]\qquad
+      \Gamma \der t : B [s , u]
+    }{\Gamma \der \pair u t : \SigT A B \,[s]}
+\qquad
+  \ru{%
+      % \Delta \der A \qquad
+      % \cext \Delta A \der B \qquad
+      % \Gamma \der s : \Delta \qquad
+      \Gamma \der t : \SigT A B \,[s]
+    }{\Gamma \der \tfst\, t : A [s]}
+\qquad
+  \ru{%
+      % \Delta \der A \qquad
+      % \cext \Delta A \der B \qquad
+      % \Gamma \der s : \Delta \qquad
+      \Gamma \der t : \SigT A B \,[s]
+      % \qquad
+      % \{\Gamma \der \pair s {\tfst\,t} : \cext \Delta A
+      % \}
+    }{\Gamma \der \tsnd\, t : B [s , \tfst\, t]}
+\\[2ex]
+  \ru{%
+      % \Delta \der A \qquad
+      % \cext \Delta A \der B \qquad
+      % \Gamma \der s : \Delta \qquad
+      \cext \Gamma {A \comp s} \der t : B [s \comp \pi_1,\; \pi_2]
+    }{\Gamma \der \lambda t : \PiT A B [s]}
+\qquad
+  \ru{%
+      % \Delta \der A \qquad
+      % \cext \Delta A \der B \qquad
+      % \Gamma \der s : \Delta \qquad
+      \Gamma \der t : \piT A B \,[s] \qquad
+      \Gamma \der u : A [s]
+    }{\Gamma \der t\,u : B[s, u]}
+\end{gather*}
+We can also define the projections as functions.
+\begin{gather*}
+  \ru{
+    }{\Gamma \der \tfst : \PiT {(\PiT A B)} {(A \comp \pi_1)} [s]}
+\qquad
+  \ru{
+    }{\Gamma \der \tsnd : \PiT {(\PiT A B)} {(B \comp \tfst\,\pi_2)} [s]}
+\end{gather*}
+However, if we overloaded $\pi_1$ and $\pi_2$ for that purpose, this would
+lead to confusion of composition and application.
+
+Conversion rule.
+\begin{gather*}
+  \ru{\Delta \der A \qquad
+      \Gamma \der s : \Delta \qquad
+      \Gamma \der t : A [s] \qquad
+      \Delta' \der A' \qquad
+      \Gamma \der s' : \Delta' \qquad
+      \Gamma \der A \comp s = A' \comp s'
+    }{\Gamma \der t : A' [s']}
+\end{gather*}
+
+
+\section{Dependent types -- Can we unify contexts and types?}
+
+Types $A$ depend on contexts $\Gamma$, forming families $\Gamma \der A$.
+We wish to model contexts as closed types $1 \der C$, i.e., families
+over the unit type (which is the empty context).  Thus, we need to
+convert between unit-families and contexts.
+
+Syntax.
+\[
+\begin{array}{lrl@{\qquad}l}
+  A,B,C & ::= & 1 \mid \SigT A B \mid \PiT A B % \mid \ty{\Gamma}
+    & \mbox{types (families)} \\
+  \Gamma, \Delta & ::= & \cxt{C}
+    & \mbox{contexts (closed types)} \\
+\end{array}
+\]
+Type $\ty{\Gamma}$ is given by $\ty{\cxt C} = C$.
+We define $\cempty = \cxt 1$ and
+$\cext \Gamma A = \cxt{\SigT{\ty \Gamma} A}$.
+
+Contexts. \fbox{$\der \Gamma$}
+\begin{gather*}
+%   \ru{}{\der \cempty}
+% \qquad
+  \ru{\cempty \der C}{\der \cxt C}
+\end{gather*}
+% The first rule is to stop the infinite regression:
+% $\der \cempty$ if $\cempty \der 1$ if $\der \cempty$ ...
+
+Types (families). \fbox{$\Gamma \der A$}  Implies $\der \Gamma$.
+\begin{gather*}
+  \ru{
+    }{\cempty \der 1}
+  % \ru{\cempty \der C
+  %   }{\cxt C \der 1}
+\qquad
+  \ru{\Gamma \der A \qquad
+      \cext \Gamma A \der B
+    }{\Gamma \der \SigT A B}
+\qquad
+  \ru{\Gamma \der A \qquad
+      \cext \Gamma A \der B
+    }{\Gamma \der \PiT A B}
+\qquad
+  \ru{\Gamma \der A \qquad \Delta \der s : \Gamma
+    }{\Delta \der A \comp s}
+\end{gather*}
+Derived rule.
+\begin{gather*}
+  \ru{\der \Gamma
+    }{\cempty \der \ty\Gamma}
+\end{gather*}
+
+Substitutions (non-dependent morphisms). \fbox{$\Gamma \der s : \Delta$} $\iff$
+$\Gamma \der s : \ty{\Delta} [\emp]$.
+% The following rules are really term rules (expand the definition).
+% \begin{gather*}
+%
+% \end{gather*}
+
+Terms (dependent morphisms). \fbox{$\Gamma \der t : A [s]$} where
+$\Delta \der A$ and $\Gamma \der s : \Delta$.
+\begin{gather*}
+  \ru{\der \Gamma
+    }{\Gamma \der \emp : 1 [\emp]}
+\qquad
+  \ru{\cempty \der C
+    }{\cxt C \der \tid : C [\emp]}
+  % \ru{
+  %   }{\Gamma \der \tid : \Gamma}
+\qquad
+  \ru{\Gamma_0 \der A \qquad
+      \Gamma \der s_0 : \Gamma_0 \qquad
+      \Gamma \der t : A[s_0]   \qquad
+      \Delta \der s : \Gamma
+    }{\Delta \der t \comp s : A[s_0 \comp s]}
+\\[2ex]
+  \ru{\cempty \der C \qquad
+       \cxt C \der A
+    }{\cxt{\SigT C A} \der \pi_1 : C [\emp]}
+\qquad
+  \ru{\cempty \der C \qquad
+       \cxt C \der A
+    }{\cxt{\SigT C A} \der \pi_2 : A [\pi_1]}
+\\[2ex]
+  \ru{\Delta \der A \qquad
+      \cext \Delta A \der B \qquad
+      \Gamma \der s : \Delta \qquad
+      \Gamma \der u : A [s]\qquad
+      \Gamma \der t : B [s , u]
+    }{\Gamma \der \pair u t : \SigT A B \,[s]}
+\end{gather*}
+This rule requires $\Gamma \der \pair s u : \cext \Delta A$
+to be derivable, \ie,
+$\Gamma \der \pair s u : (\SigT {\ty\Delta} A) \, [\emp]$.
+Thus, we need $\Gamma \der u  : A [\emp, s]$.
+Which requires $\cext \cempty \Delta \der A$.
+TODO: There is an isomorphism missing.
+\begin{gather*}
+  \ru{\Delta \der A \qquad
+      \cext \Delta A \der B \qquad
+      \Gamma \der s : \Delta \qquad
+      \cext \Gamma {(A \comp s)} \der t : B\,[s \comp \pi_1,\; \pi_2]
+    }{\Gamma \der \lambda t : \PiT A B \, [s]}
+\end{gather*}
+For this rule, we need $\Gamma \der A \comp s$, ok, holds.
+Further, $\cext \Gamma {(A \comp s)} \der \pair{s \comp \pi_1}{\pi_2} :
+\cext \Delta A$.
+First subgoal is
+$\cext \Gamma {(A \comp s)} \der s \comp \pi_1 : \Delta$;
+note that $\cext \Gamma {(A \comp s)} \der \pi_1 : \Gamma$.
+The second subgoal is
+$\cext \Gamma {(A \comp s)} \der \pi_2 : A [\emp, s \comp \pi_1]$.
+We can get
+$\cext \Gamma {(A \comp s)} \der \pi_2 : (A \comp s) [\pi_1]$,
+but then we need type conversion and have the $\emp$-mismatch.
+\begin{gather*}
+  \ru{\Delta \der A \qquad
+      \Gamma \der s : \Delta \qquad
+      \Gamma \der t : A [s] \qquad
+      \Delta' \der A' \qquad
+      \Gamma \der s' : \Delta' \qquad
+      \Gamma \der A \comp s = A' \comp s'
+    }{\Gamma \der t : A' [s']}
+\end{gather*}
+
+
+Derived rules for substitutions.
+\begin{gather*}
+  \ru{\der \Gamma
+    }{\Gamma \der \emp : \cempty}
+\qquad
+  \ru{\der \Gamma
+    }{\Gamma \der \tid : \Gamma}
+\qquad
+\end{gather*}
+
+Derived rule for context extension.
+\[
+  \ru{\der \Gamma \qquad
+      \Gamma \der A
+    }{\der \cext \Gamma A}
+\]
+We have to show $\der \cxt{\SigT{\ty\Gamma}A}$, \ie,
+$\cempty \der \SigT{\ty\Gamma} A$.  First subgoal is
+$\cempty \der \ty\Gamma$, which holds since $\der \Gamma$.
+Second subgoal is $\cext \cempty {\ty\Gamma} \der A$,
+which unfolds to $\cxt{\SigT{\ty \cempty} {\ty\Gamma}} \der A$
+and further to $\cxt{\SigT 1 {\ty\Gamma}} \der A$.
+\end{document}
