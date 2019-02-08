@@ -1,6 +1,8 @@
+{-# OPTIONS --caching #-}
+
 -- Sets in ITT following Aczel, Werner, Barras
 
-open import Level using (Level; _⊔_) renaming (zero to lzero; suc to lsuc)
+open import Level using (Level; _⊔_; Lift; lower) renaming (zero to lzero; suc to lsuc)
 
 open import Data.Empty using (⊥)
 open import Data.Nat.Base using (ℕ)
@@ -47,6 +49,9 @@ els (sup f) = f
 
 syntax els a i = a ` i
 
+lift-set : ∀{a ℓ} → set ℓ → set (a ⊔ ℓ)
+lift-set {a} (sup {I = I} f) = sup {I = Lift a I} λ i → lift-set {a} (f (lower i))
+
 -- Elementhood and extensional equality (recursive)
 
 mutual
@@ -61,6 +66,9 @@ mutual
 
 _∉_ : ∀{ℓ} (a b : set ℓ) → Type ℓ
 a ∉ b = ¬ (a ∈ b)
+
+_≇_ : ∀{ℓ} (a b : set ℓ) → Type ℓ
+a ≇ b = ¬ (a ≅ b)
 
 -- Reflexivity
 
@@ -235,7 +243,7 @@ pair-inhabited {a = a} = a , true , ≅-refl a
 -- Union of two sets
 
 _∪_ : ∀{ℓ} (a b : set ℓ) → set ℓ
-a ∪ b = sup λ where
+a ∪ b = sup {I = _ ⊎ _} λ where
   (inj₁ i) → a ` i
   (inj₂ j) → b ` j
 
@@ -342,12 +350,29 @@ a ∩ b = a ∣ (_∈ b)
 ⋂ᶠ : ∀{ℓ} {I : Type ℓ} (i : I) (f : I → set ℓ) → set ℓ
 ⋂ᶠ i f = f i ∣ λ a → ∀ i′ → a ∈ f i′
 
+⋂ᶠ-intro : ∀{ℓ} {I : Type ℓ} {i : I} {f : I → set ℓ} {a} (r : ∀ j → a ∈ f j) → a ∈ ⋂ᶠ i f
+⋂ᶠ-intro {i = i} r = let
+    k , p = ∈-elim (r i)
+  in (k , λ j → ∈-congˡ (≅-sym p) (r j)) , p
+
 -- Intersection of an inhabited set
 
 ⋂ : ∀{ℓ} (a : set ℓ) (inh : IsInhabited a) → set ℓ
 ⋂ (sup f) (b , i , b≅fi) = ⋂ᶠ i f
 
+_∈∀∈_ : ∀{ℓ} (a b : set ℓ) → Set (lsuc ℓ)
+c ∈∀∈ a = ∀ {b} → b ∈ a → c ∈ b
+
+⋂-intro : ∀{ℓ} {a : set ℓ} {inh : IsInhabited a} {c} (r : c ∈∀∈ a) → c ∈ ⋂ a inh
+⋂-intro {a = sup f} {b , i , b≅fi} r = ⋂ᶠ-intro λ j → r (j , ≅-refl _)
+
 -- Covariant powerset
+
+-- Pow⁺ : ∀{k ℓ} (D : Type k) (a : set ℓ) → set (k ⊔ ℓ)
+-- Pow⁺ {k} {ℓ} D (sup {I = I} f) = sup λ (sel : D → I) → sup λ (d :  Lift {k}{ℓ} D) → lift-set {k} (f (sel (lower d)))
+
+-- Power⁺ : ∀{ℓ} (a : set ℓ) → set (suc ℓ)
+-- Power⁺ (sup {I = I} f) = sup {I = I → Type ℓ}
 
 Pow⁺ : ∀{ℓ} (D : Type ℓ) (a : set ℓ) → set ℓ
 Pow⁺ D (sup {I = I} f) = sup λ (sel : D → I) → sup λ (d : D) → f (sel d)
@@ -393,16 +418,56 @@ data Nat ℓ : Type ℓ where
 Pω : ∀{ℓ} (a : set ℓ) → set ℓ
 Pω {ℓ} a = Pow⁺ (Nat ℓ) a
 
--- Tuples (Kuratowski, 1921)
+-- Ordered pairs / tuples (Kazimierz Kuratowski, 1921)
 
 tup : ∀{ℓ} (a b : set ℓ) → set ℓ
 tup a b = pair (sg a) (pair a b)
 
+-- The first argument is member of both components of the Kuratowski pair
+
+fst-in-all-tup : ∀{ℓ} {a b : set ℓ} → a ∈∀∈ tup a b
+fst-in-all-tup (true  , _ , p) = p _
+fst-in-all-tup (false , _ , p) = p true
+
 -- First projection
 -- π₁(p) = ⋃ ⋂ p
 
-fst : ∀{ℓ} (a : set ℓ) (inh : IsInhabited a) → set ℓ
-fst a inh = ⋃ (⋂ a inh)
+fst : ∀{ℓ} (c : set ℓ) (inh : IsInhabited c) → set ℓ
+fst c inh = ⋃ (⋂ c inh)
+
+fst-tup-sub : ∀{ℓ} {a b : set ℓ} → fst (tup a b) pair-inhabited ⊂ a
+fst-tup-sub ((record {} , f) , i) = ∈-intro (i , ≅-refl _)
+
+fst-tup-sup : ∀{ℓ} {a b : set ℓ} → a ⊂ fst (tup a b) pair-inhabited
+fst-tup-sup = ⊂-intro λ c∈a → let
+    i , p = ∈-elim c∈a
+  in ((_ , \{ true → _ , ≅-refl _ ; false → true , ≅-refl _ }) , i) , p
 
 fst-tup : ∀{ℓ} {a b : set ℓ} → fst (tup a b) (pair-inhabited) ≅ a
-fst-tup = (λ i → {!!}) , {!!}
+fst-tup = fst-tup-sub , fst-tup-sup
+
+-- Second projection
+-- π₂ (p) = ⋃ { x ∈ ⋃ p ∣ ⋃ p ≠ ⋂ p → x ∉ ⋂ p }
+
+snd : ∀{ℓ} (c : set ℓ) (inh : IsInhabited c) → set ℓ
+snd c inh = let
+    u = ⋃ c
+    i = ⋂ c inh
+  in ⋃ (u ∣ λ a → u ≇ i → a ∉ i)
+
+snd-tup-sub : ∀{ℓ} {a b : set ℓ} → snd (tup a b) pair-inhabited ⊂ b
+snd-tup-sub {ℓ} {a} {b} (((true  , _) , y) , p) = {!!}
+snd-tup-sub {ℓ} {a} {b} (((false , q) , y) , p) = {!!}
+
+snd-tup-sup : ∀{ℓ} {a b : set ℓ} → b ⊂ snd (tup a b) pair-inhabited
+snd-tup-sup = ⊂-intro λ c∈b → let
+    i , p = ∈-elim c∈b
+  in {!!}
+
+snd-tup : ∀{ℓ} {a b : set ℓ} → snd (tup a b) (pair-inhabited) ≅ b
+snd-tup = snd-tup-sub , snd-tup-sup
+
+
+-- -}
+-- -}
+-- -}
