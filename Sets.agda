@@ -9,7 +9,7 @@ open import Data.Nat.Base using (ℕ)
 open import Data.Product using (Σ; ∃; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 
-open import Function using (id)
+open import Function using (id; _$_)
 
 open import Relation.Nullary
 open import Relation.Binary.PropositionalEquality
@@ -151,9 +151,11 @@ record Pred ℓ : Type (lsuc ℓ) where
 
 -- ∈ induction.
 
-∈-ind : ∀{ℓ} {P} → IsPred P →
-        (f : ∀ (a : set ℓ) → (∀ {b} → b ∈ a → P b) → P a) → ∀ a → P a
-∈-ind P-transp f a@(sup ela) = f a (\ { {b} (x , eqv) → P-transp (≅-sym eqv) (∈-ind P-transp f (ela x)) }  )
+∈-ind : ∀{ℓ} {P} → IsPred P
+      → (f : ∀ (a : set ℓ) → (∀ {b} → b ∈ a → P b) → P a)
+      → ∀ a → P a
+∈-ind P-transp f a@(sup ela) = f a λ where
+  (i , eqv) → P-transp (≅-sym eqv) (∈-ind P-transp f (ela i))
 
 
 -- Get a selection function from ⊂
