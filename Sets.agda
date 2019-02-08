@@ -148,6 +148,14 @@ record Pred ℓ : Type (lsuc ℓ) where
     _!_  : set ℓ → Type ℓ
     resp : IsPred _!_
 
+
+-- ∈ induction.
+
+∈-ind : ∀{ℓ} {P} → IsPred P →
+        (f : ∀ (a : set ℓ) → (∀ {b} → b ∈ a → P b) → P a) → ∀ a → P a
+∈-ind P-transp f a@(sup ela) = f a (\ { {b} (x , eqv) → P-transp (≅-sym eqv) (∈-ind P-transp f (ela x)) }  )
+
+
 -- Get a selection function from ⊂
 
 sel-from-⊂ : ∀{ℓ} {a b : set ℓ} (p : a ⊂ b) → Br a → Br b
