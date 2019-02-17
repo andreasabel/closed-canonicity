@@ -1,4 +1,5 @@
 {-# OPTIONS --caching #-}
+{-# OPTIONS --postfix-projections #-}
 
 -- Sets in ITT following Aczel, Werner, Barras
 
@@ -6,10 +7,11 @@ open import Level using (Level; _⊔_; Lift; lower) renaming (zero to lzero; suc
 
 open import Data.Empty using (⊥)
 open import Data.Nat.Base using (ℕ)
+open import Data.Maybe using (Maybe; nothing; just; maybe)
 open import Data.Product using (Σ; ∃; _×_; _,_; proj₁; proj₂)
 open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
 
-open import Function using (id; _$_)
+open import Function using (id; _$_; _∘_)
 
 open import Relation.Nullary
 open import Relation.Binary.PropositionalEquality
@@ -477,6 +479,80 @@ snd-tup-sup = ⊂-intro λ c∈b → let
 snd-tup : ∀{ℓ} {a b : set ℓ} → snd (tup a b) (pair-inhabited) ≅ b
 snd-tup = snd-tup-sub , snd-tup-sup
 
+
+-- c is a transitive set if a ∈ b ∈ c implies a ∈ c.
+
+TransitiveSet : ∀{ℓ} (c : set ℓ) → Set (lsuc ℓ)
+TransitiveSet c = ∀{b} → b ∈ c → b ⊂ c
+
+-- "transitive set" is an extensional notion.
+
+transitive-ext : ∀{ℓ} {b c : set ℓ} → b ≅ c → TransitiveSet b → TransitiveSet c
+transitive-ext (b⊂c , c⊂b) t p = ⊂-trans (t (⊂-elim c⊂b p)) b⊂c
+
+-- Ordinals are transitive sets of transitive elements.
+
+record Ordinal {ℓ} (α : set ℓ) : Set (lsuc ℓ) where
+  constructor ordinal
+  field
+    isTrans : TransitiveSet α
+    elTrans : ∀{β} → β ∈ α → TransitiveSet β
+open Ordinal
+
+-- Von Neumann successor: α + 1 = α ∪ {α}.
+
+osuc : ∀{ℓ} (α : set ℓ) → set ℓ
+osuc α@(sup {I = I} f) = sup {I = Maybe I} (maybe f α)
+
+-- α ∈ α + 1
+
+osuc-intro-∈ : ∀{ℓ} (α : set ℓ) → α ∈ osuc α
+osuc-intro-∈ (sup f) = nothing , ≅-refl (sup f)
+
+-- α ⊂ α + 1
+
+osuc-intro-⊂ : ∀{ℓ} (α : set ℓ) → α ⊂ osuc α
+osuc-intro-⊂ (sup f) i = just i , ≅-refl (f i)
+
+-- β ⊂ α  implies  β ⊂ osuc α
+
+osuc-intro-⊂' : ∀{ℓ} {α β : set ℓ} → β ⊂ α → β ⊂ osuc α
+osuc-intro-⊂' p = ⊂-trans p (osuc-intro-⊂ _)
+
+-- If  β ∈ α + 1  then  β ∈ α  or  β ≅ α.
+
+osuc-elim : ∀{ℓ}{α β : set ℓ} (p : β ∈ osuc α) → (β ∈ α) ⊎ (β ≅ α)
+osuc-elim {α = sup f} (just i  , p) = inj₁ (i , p)
+osuc-elim {α = sup f} (nothing , p) = inj₂ p
+
+osuc-case : ∀{ℓ }{α β : set ℓ} (p : β ∈ osuc α) → ∀{c} {C : Type c} → (β ∈ α → C) → (β ≅ α → C) → C
+osuc-case {α = sup f} (just i  , p) k₁ k₂ = k₁ (i , p)
+osuc-case {α = sup f} (nothing , p) k₁ k₂ = k₂ p
+
+osuc-copair : ∀{ℓ c} {α β : set ℓ} {C : Type c}
+  → (β ∈ α → C)
+  → (β ≅ α → C)
+  → β ∈ osuc α → C
+osuc-copair {α = sup f} k₁ k₂ (just i  , p) = k₁ (i , p)
+osuc-copair {α = sup f} k₁ k₂ (nothing , p) = k₂ p
+
+-- If α is transitive, so is α + 1.
+
+transitive-suc : ∀{ℓ} {α : set ℓ} (t : TransitiveSet α) → TransitiveSet (osuc α)
+transitive-suc t = osuc-copair (osuc-intro-⊂' ∘ t) (osuc-intro-⊂' ∘ proj₁)
+
+-- If α is an ordinal, so is α + 1.
+
+ordinal-suc : ∀{ℓ} {α : set ℓ} (o : Ordinal α) → Ordinal (osuc α)
+ordinal-suc o .isTrans = transitive-suc (o .isTrans)
+ordinal-suc o .elTrans = osuc-copair
+  (λ β∈α → o .elTrans β∈α )
+  (λ β≅α → transitive-ext (≅-sym β≅α) (o .isTrans))
+
+-- If f is a family of transitive sets, so is the union ⋃ f.
+
+transitive-union : ∀{ℓ} {I : Type ℓ} (f : I → set ℓ) (t : ∀ i → TransitiveSet (f i)) → TransitiveSet (⋃ᶠ f)
+transitive-union f t p = let (i , q) = ⋃ᶠ-elim f p in  ⊂-trans (t i q) (⊂-intro (⋃ᶠ-intro f))
 
 -- -}
 -- -}
