@@ -2,6 +2,7 @@
 open import Level            public using (Level; _⊔_; Lift; lower) renaming (zero to lzero; suc to lsuc)
 
 open import Data.Empty       public using (⊥)
+open import Data.Unit        public using (⊤)
 open import Data.Nat.Base    public using (ℕ)
 open import Data.Maybe       public using (Maybe; nothing; just; maybe)
 open import Data.Product     public using (Σ; ∃; _×_; _,_; proj₁; proj₂)

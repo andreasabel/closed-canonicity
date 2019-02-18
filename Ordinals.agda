@@ -101,20 +101,20 @@ acc-sup h = acc (λ γ p → let (i , γ≤fi) = p in acc-≤ γ≤fi (h i))
 -- Successor.
 
 osuc : Ord ℓ → Ord ℓ
-osuc α@(sup {I = I} f) = sup {I = Maybe I} (maybe f α)
+osuc α = sup {I = Lift _ ⊤} λ _ → α
 
 osuc-< : α < osuc α
-osuc-< {α = sup f} = nothing , refl-≤
+osuc-< = _ , refl-≤
 
 -- If  α ≤ β  then  α < β+1.
 
 osuc-≤-< : α ≤ β → α < osuc β
-osuc-≤-< {β = sup g} p = nothing , p
+osuc-≤-< p = _ , p
 
 -- If  α < β  then  α+1 ≤ β.
 
 osuc-<-≤ : α < β → osuc α ≤ β
-osuc-<-≤ {α = sup f} {β = sup g} (j , h) = maybe (λ i → (j , ≤-from-< (h i))) (j , h)
+osuc-<-≤ {β = sup g} p _ = p
 
 -- As a consequence, the successor preserves < and ≤.
 
@@ -149,11 +149,31 @@ osuc-cong-≤ = osuc-<-≤ ∘ osuc-≤-<
   in
     (j , k) , p
 
+-- Relation between ⋃ and sup.
+
 ⋃≤sup : ⋃ f ≤ sup f
 ⋃≤sup {f = f} (i , j) = i , ≤-from-< (pred-intro-left (refl-≤ {α = f i}))
 
--- -- The following do not seem to hold (not provable).
--- ⋃<sup : ⋃ f < sup f
--- ⋃<sup = {!!}
--- ⋃-left-sup :  (∀ i → ∃ λ j → f i ≤ g j) → ⋃ f < sup g
--- ⋃-left-sup h = {!!}
+⋃suc≤sup : ⋃ (osuc ∘ f) ≤ sup f
+⋃suc≤sup (i , _) = i , refl-≤
+-- ⋃suc≤sup {f = f} (i , _) = i , refl-≤ {α = f i}
+
+sup≤⋃suc : sup f ≤ ⋃ (osuc ∘ f)
+sup≤⋃suc i = (i , _) , refl-≤
+
+-- "sup" f  is actually  ⋃ { f i + 1 | i : I }
+
+sup=⋃suc : sup f ≅ ⋃ (osuc ∘ f)
+sup=⋃suc = sup≤⋃suc , ⋃suc≤sup
+
+
+-- -}
+-- -}
+-- -}
+-- -}
+-- -}
+-- -}
+-- -}
+-- -}
+-- -}
+-- -}
