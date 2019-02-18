@@ -552,7 +552,19 @@ ordinal-suc o .elTrans = osuc-copair
 -- If f is a family of transitive sets, so is the union ⋃ f.
 
 transitive-union : ∀{ℓ} {I : Type ℓ} (f : I → set ℓ) (t : ∀ i → TransitiveSet (f i)) → TransitiveSet (⋃ᶠ f)
-transitive-union f t p = let (i , q) = ⋃ᶠ-elim f p in  ⊂-trans (t i q) (⊂-intro (⋃ᶠ-intro f))
+transitive-union f t p = let
+    (i , q) = ⋃ᶠ-elim f p
+  in
+    ⊂-trans (t i q) (⊂-intro (⋃ᶠ-intro f))
+
+-- If f is a family of ordinals, so is the union ⋃ f.
+
+ordinal-union : ∀{ℓ} {I : Type ℓ} (f : I → set ℓ) (t : ∀ i → Ordinal (f i)) → Ordinal (⋃ᶠ f)
+ordinal-union f t .isTrans   = transitive-union f (isTrans ∘ t)
+ordinal-union f t .elTrans p = let
+    (i , q) = ⋃ᶠ-elim f p
+  in
+    t i .elTrans q
 
 -- -}
 -- -}
