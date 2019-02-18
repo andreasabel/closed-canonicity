@@ -3,21 +3,7 @@
 
 -- Sets in ITT following Aczel, Werner, Barras
 
-open import Level using (Level; _⊔_; Lift; lower) renaming (zero to lzero; suc to lsuc)
-
-open import Data.Empty using (⊥)
-open import Data.Nat.Base using (ℕ)
-open import Data.Maybe using (Maybe; nothing; just; maybe)
-open import Data.Product using (Σ; ∃; _×_; _,_; proj₁; proj₂)
-open import Data.Sum using (_⊎_; inj₁; inj₂; [_,_]′)
-
-open import Function using (id; _$_; _∘_)
-
-open import Relation.Nullary
-open import Relation.Binary.PropositionalEquality
-
-Type : ∀ ℓ → Set (lsuc ℓ)
-Type ℓ = Set ℓ
+open import Library
 
 -- Image
 
