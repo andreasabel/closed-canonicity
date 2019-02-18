@@ -8,7 +8,7 @@ open import Data.Nat.GeneralisedArithmetic
                              public using (fold)
 open import Data.Maybe       public using (Maybe; nothing; just; maybe)
 open import Data.Product     public using (Σ; ∃; _×_; _,_; proj₁; proj₂)
-open import Data.Sum         public using (_⊎_; inj₁; inj₂; [_,_]′)
+open import Data.Sum         public using (_⊎_; inj₁; inj₂; [_,_]′; [_,_])
 
 open import Function         public using (id; _$_; _∘_)
 

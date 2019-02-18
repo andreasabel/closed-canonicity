@@ -98,6 +98,11 @@ wf {α = sup f} = acc λ _ p → acc-≤ (proj₂ p) wf
 acc-sup : (∀ i → Acc _<_ (f i)) → Acc _<_ (sup f)
 acc-sup h = acc (λ γ p → let (i , γ≤fi) = p in acc-≤ γ≤fi (h i))
 
+-- Zero ordinal
+
+∅ : Ord ℓ
+∅ = sup {I = Lift _ ⊥} λ()
+
 -- Successor.
 
 osuc : Ord ℓ → Ord ℓ
@@ -187,12 +192,37 @@ inacc α = α , refl-≤
 -- _+_ : (α β : Ord ℓ) → Ord ℓ
 -- α + sup f = sup λ i → α + f i
 
+-- Hessenberg sum (natural sum)
+
+_⊕_ : (α β : Ord ℓ) → Ord ℓ
+α@(sup{I = I}f) ⊕ β@(sup{I = J}g) = sup {I = I ⊎ J} [ (λ i → f i ⊕ β) , (λ j → α ⊕ g j) ]′
+
+-- ∅ is left unit for ⊕
+
+zero⊕-≤ : (∅ ⊕ β) ≤ β
+zero⊕-≤ {β = sup g} (inj₁ ())
+zero⊕-≤ {β = sup g} (inj₂ i) = i , zero⊕-≤ {β = g i}
+-- zero⊕-≤ {β = sup g} = [ (λ()) , (λ i → i , zero⊕-≤ {β = g i}) ]
+
+zero⊕-≥ : β ≤ (∅ ⊕ β)
+zero⊕-≥ {β = sup g} i = inj₂ i , zero⊕-≥
+
+zero⊕ : (∅ ⊕ β) ≅ β
+zero⊕ = zero⊕-≤ , zero⊕-≥
+
+-- ∅ is right unit for ⊕
+
+⊕zero-≤ : (α ⊕ ∅) ≤ α
+⊕zero-≤ {α = sup g} (inj₂ ())
+⊕zero-≤ {α = sup g} (inj₁ i) = i , ⊕zero-≤ {α = g i}
+
+⊕zero-≥ : α ≤ (α ⊕ ∅)
+⊕zero-≥ {α = sup g} i = inj₁ i , ⊕zero-≥
+
+⊕zero : (α ⊕ ∅) ≅ α
+⊕zero = ⊕zero-≤ , ⊕zero-≥
+
 -- Constructing ordinals
-
--- Zero ordinal
-
-∅ : Ord ℓ
-∅ = sup {I = Lift _ ⊥} λ()
 
 -- Countable limits
 
