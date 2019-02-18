@@ -12,8 +12,22 @@ variable
   ℓ : Level
   α β γ : Ord ℓ
   I : Type ℓ
-  i : I
-  f : I → Ord ℓ
+  i j : I
+  f g : I → Ord ℓ
+
+-- Branching type.
+
+Br : Ord ℓ → Type ℓ
+Br (sup {I = I} _) = I
+
+-- Picking a predecessor.
+
+_`_ : (α : Ord ℓ) → Br α → Ord ℓ
+sup f ` i = f i
+
+-- α < β  iff  (∃i. α ≤ βᵢ)
+-- α ≤ β  iff  (∀i. αᵢ < β)
+-- α = β  iff  α ≤ β ≤ α
 
 mutual
   _<_ : (α β : Ord ℓ) → Type ℓ
@@ -22,8 +36,19 @@ mutual
   _≤_ : (α β : Ord ℓ) → Type ℓ
   sup f ≤ β = ∀ i → f i < β
 
-  _≅_ : (α β : Ord ℓ) → Type ℓ
-  α ≅ β = (α ≤ β) × (β ≤ α)
+_≅_ : (α β : Ord ℓ) → Type ℓ
+α ≅ β = (α ≤ β) × (β ≤ α)
+
+-- Predecessor.
+
+pred-intro-left : α ≤ β → (α ` i) < β
+pred-intro-left {α = sup f} h = h _
+
+pred-intro-right : α < β → ∃ λ i → α ≤ (β ` i)
+pred-intro-right {β = sup f} p = p
+
+pred-< : α ≤ (β ` i) → α < β
+pred-< {β = sup f} p = _ , p
 
 -- Reflexivity.
 
@@ -109,3 +134,26 @@ osuc-cong-≤ : α ≤ β → osuc α ≤ osuc β
 osuc-cong-≤ = osuc-<-≤ ∘ osuc-≤-<
 -- osuc-cong-≤ {α = sup f} {β = sup g} h (just i) = let (j , p) = h i in just j , p
 -- osuc-cong-≤ {α = sup f} {β = sup g} h nothing  = nothing , h
+
+-- Union (the actual least upper bound).
+
+⋃ : {I : Type ℓ} (f : I → Ord ℓ) → Ord ℓ
+⋃ {I = I} f = sup {I = Σ I (Br ∘ f)} λ p → let (i , j) = p in f i ` j
+
+⋃-left : (∀ i → f i ≤ β) → ⋃ f ≤ β
+⋃-left h (i , j) = pred-intro-left (h i)
+
+⋃-right : α ≤ g j → α ≤ ⋃ g
+⋃-right {α = sup f} {j = j} h i = let
+    k , p = pred-intro-right (h i)
+  in
+    (j , k) , p
+
+⋃≤sup : ⋃ f ≤ sup f
+⋃≤sup {f = f} (i , j) = i , ≤-from-< (pred-intro-left (refl-≤ {α = f i}))
+
+-- -- The following do not seem to hold (not provable).
+-- ⋃<sup : ⋃ f < sup f
+-- ⋃<sup = {!!}
+-- ⋃-left-sup :  (∀ i → ∃ λ j → f i ≤ g j) → ⋃ f < sup g
+-- ⋃-left-sup h = {!!}
