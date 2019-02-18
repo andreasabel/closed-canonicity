@@ -189,8 +189,15 @@ inacc α = α , refl-≤
 
 -- Constructing ordinals
 
+-- Zero ordinal
+
 ∅ : Ord ℓ
 ∅ = sup {I = Lift _ ⊥} λ()
+
+-- Countable limits
+
+olim : (ℕ → Ord ℓ) → Ord ℓ
+olim f = sup {I = Lift _ ℕ} (f ∘ lower)
 
 -- Finite ordinals
 
@@ -201,7 +208,7 @@ ofin (suc n) = osuc (ofin n)
 -- First infinite ordinal
 
 ω : Ord ℓ
-ω = sup {I = Lift _ ℕ} (ofin ∘ lower)
+ω = olim ofin
 
 -- ω + n
 
@@ -218,7 +225,7 @@ _+ℕ_ : Ord ℓ → ℕ → Ord ℓ
 -- α +ω
 
 _+ω : Ord ℓ → Ord ℓ
-α +ω = sup {I = Lift _ ℕ} (α +ℕ_ ∘ lower)
+α +ω = olim (α +ℕ_)
 
 -- ω ∙ n
 
@@ -229,7 +236,35 @@ _+ω : Ord ℓ → Ord ℓ
 -- ω²
 
 ω² : Ord ℓ
-ω² = sup {I = Lift _ ℕ} (ω∙_ ∘ lower)
+ω² = olim ω∙_
+
+-- ORDINALS IN TYPE THEORY
+-- Thierry Coquand, Peter Hancock and Anton Setzer
+-- Aarhus, August 1997
+
+-- Limit structures
+
+record Lim (X : Type ℓ) : Type ℓ where
+  constructor limStruct
+  field
+    z : X
+    s : X → X
+    l : (ℕ → X) → X
+  omega : X
+  omega = l (fold z s)
+
+oLim : Lim (Ord ℓ)
+oLim = limStruct ∅ osuc olim
+
+a'Lim : Lim (Ord ℓ → Ord ℓ)
+a'Lim = limStruct id (osuc ∘_) (λ f α → olim λ n → f n α)
+
+a₁Lim : Lim (Ord ℓ → Ord ℓ)
+a₁Lim = limStruct osuc (λ g α → olim λ n → fold id (g ∘_) n α) (λ f α → olim λ n → f n α)
+
+ω^ω : Ord ℓ
+ω^ω = Lim.omega a₁Lim ∅  -- ??
+
 
 -- _+ω² : Ord ℓ → Ord ℓ
 -- α +ω² =  sup {I = Lift _ ℕ} (α +ℕ_ ∘ ω∙_ ∘ lower)
