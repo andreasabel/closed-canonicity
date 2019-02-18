@@ -166,6 +166,86 @@ sup≤⋃suc i = (i , _) , refl-≤
 sup=⋃suc : sup f ≅ ⋃ (osuc ∘ f)
 sup=⋃suc = sup≤⋃suc , ⋃suc≤sup
 
+-- Lifting
+
+lift : ∀ a → Ord ℓ → Ord (ℓ ⊔ a)
+lift a (sup {I = I} f) = sup {I = Lift a I} (lift a ∘ f ∘ lower)
+
+-- An ordinal beyond any α : Ord ℓ
+
+Ω : ∀ ℓ → Ord (lsuc ℓ)
+Ω ℓ = sup {I = Ord ℓ} (lift (lsuc ℓ))
+
+-- Ω ℓ is inaccessible for Ord ℓ
+
+inacc : ∀ (α : Ord ℓ) → lift (lsuc ℓ) α < Ω ℓ
+inacc α = α , refl-≤
+
+-- Ordinary ordinal addition (recursion on second argument) ?
+
+-- The following definition is nonsense, as α + β ≅ β
+-- _+_ : (α β : Ord ℓ) → Ord ℓ
+-- α + sup f = sup λ i → α + f i
+
+-- Constructing ordinals
+
+∅ : Ord ℓ
+∅ = sup {I = Lift _ ⊥} λ()
+
+-- Finite ordinals
+
+ofin : ℕ → Ord ℓ
+ofin zero    = ∅
+ofin (suc n) = osuc (ofin n)
+
+-- First infinite ordinal
+
+ω : Ord ℓ
+ω = sup {I = Lift _ ℕ} (ofin ∘ lower)
+
+-- ω + n
+
+ω+ : ℕ → Ord ℓ
+ω+ zero    = ω
+ω+ (suc n) = osuc (ω+ n)
+
+-- α + n
+
+_+ℕ_ : Ord ℓ → ℕ → Ord ℓ
+α +ℕ zero = α
+α +ℕ (suc n) = osuc (α +ℕ n)
+
+-- α +ω
+
+_+ω : Ord ℓ → Ord ℓ
+α +ω = sup {I = Lift _ ℕ} (α +ℕ_ ∘ lower)
+
+-- ω ∙ n
+
+ω∙_ : ℕ → Ord ℓ
+ω∙ zero    = ∅
+ω∙ (suc n) = (ω∙ n) +ω
+
+-- ω²
+
+ω² : Ord ℓ
+ω² = sup {I = Lift _ ℕ} (ω∙_ ∘ lower)
+
+-- _+ω² : Ord ℓ → Ord ℓ
+-- α +ω² =  sup {I = Lift _ ℕ} (α +ℕ_ ∘ ω∙_ ∘ lower)
+
+-- ω² ∙ n
+
+ω²∙_ : ℕ → Ord ℓ
+ω²∙ zero    = ∅
+ω²∙ (suc n) = ω²∙ n
+
+-- ωⁿ
+
+ω^_ : ℕ → Ord ℓ
+ω^ zero = ω
+ω^ (suc n) = ω^ n
+
 
 -- -}
 -- -}
