@@ -1,9 +1,9 @@
 
 open import Level            public using (Level; _⊔_; Lift; lower) renaming (zero to lzero; suc to lsuc)
 
-open import Data.Empty       public using (⊥)
+open import Data.Empty       public using (⊥; ⊥-elim)
 open import Data.Unit        public using (⊤)
-open import Data.Nat.Base    public using (ℕ; zero; suc)
+open import Data.Nat.Base    public using (ℕ; zero; suc; _+_)
 open import Data.Nat.GeneralisedArithmetic
                              public using (fold)
 open import Data.Maybe       public using (Maybe; nothing; just; maybe)

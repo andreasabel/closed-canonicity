@@ -10,10 +10,11 @@ data Ord ℓ : Type (lsuc ℓ) where
 
 variable
   ℓ : Level
-  α β γ : Ord ℓ
+  α β γ α' : Ord ℓ
   I : Type ℓ
   i j : I
   f g : I → Ord ℓ
+  n m : ℕ
 
 -- Branching type.
 
@@ -38,6 +39,9 @@ mutual
 
 _≅_ : (α β : Ord ℓ) → Type ℓ
 α ≅ β = (α ≤ β) × (β ≤ α)
+
+_≥_ : (α β : Ord ℓ) → Type ℓ
+α ≥ β = β ≤ α
 
 -- Predecessor.
 
@@ -103,6 +107,26 @@ acc-sup h = acc (λ γ p → let (i , γ≤fi) = p in acc-≤ γ≤fi (h i))
 ∅ : Ord ℓ
 ∅ = sup {I = Lift _ ⊥} λ()
 
+-- Zero as a predicate on ordinals
+
+OZero : Ord ℓ → Type ℓ
+OZero α = ¬ Br α
+
+isZero-∅ : ∀{ℓ} → OZero {ℓ = ℓ} ∅
+isZero-∅ ()
+
+oZero-is-∅ : OZero α → α ≤ ∅
+oZero-is-∅ {α = sup f} p i = ⊥-elim (p i)
+
+oZero-least : α < β → OZero β → ⊥
+oZero-least {β = sup g} (i , p) q = q i
+
+oZero-downward : α ≤ β → OZero β → OZero α
+oZero-downward {α = sup f} p q i = oZero-least (p i) q
+
+oZero-intro : α ≤ ∅ → OZero α
+oZero-intro p = oZero-downward p isZero-∅
+
 -- Successor.
 
 osuc : Ord ℓ → Ord ℓ
@@ -139,6 +163,25 @@ osuc-cong-≤ : α ≤ β → osuc α ≤ osuc β
 osuc-cong-≤ = osuc-<-≤ ∘ osuc-≤-<
 -- osuc-cong-≤ {α = sup f} {β = sup g} h (just i) = let (j , p) = h i in just j , p
 -- osuc-cong-≤ {α = sup f} {β = sup g} h nothing  = nothing , h
+
+
+-- Successor as a relation on ordinals
+
+_OSucOf_ : (α β : Ord ℓ) → Type ℓ
+sup {I = I} f OSucOf β = I × ∀ i → f i ≅ β
+
+oSucOf-osuc : osuc α OSucOf α
+oSucOf-osuc {α = sup f} = _ , λ _ → refl-≅
+
+oSucOf-subst-l : α ≅ β → α OSucOf γ → β OSucOf γ
+oSucOf-subst-l {α = sup f} {β = sup {I = J} g} (p₁ , p₂) (i , q) =
+  let (j  , p₁') = p₁ i  in j , λ j' →
+  let (i' , p₂') = p₂ j' in trans-≤-≤ p₂' (proj₁ (q i')) , {!trans-≤-≤ ? p₁'!}
+
+-- Not provable
+--
+--  let (i , q') = p' i' in trans-≤-≤ q' (proj₁ (q i)) ,  trans-≤-≤ (proj₂ (q i)) {!p i!}
+
 
 -- Union (the actual least upper bound).
 
@@ -231,7 +274,7 @@ zero⊕-≥ {β = sup g} i = inj₂ i , zero⊕-≥
 zero⊕ : (∅ ⊕ β) ≅ β
 zero⊕ = zero⊕-≤ , zero⊕-≥
 
--- ∅ is right unit for ⊕
+-- ∅ is right unit for ⊕  (or just get is by commutativity)
 
 ⊕zero-≤ : (α ⊕ ∅) ≤ α
 ⊕zero-≤ {α = sup g} (inj₂ ())
@@ -242,6 +285,21 @@ zero⊕ = zero⊕-≤ , zero⊕-≥
 
 ⊕zero : (α ⊕ ∅) ≅ α
 ⊕zero = ⊕zero-≤ , ⊕zero-≥
+
+-- Finite ordinals
+
+data _IsNat_ (α : Ord ℓ) : ℕ → Type (lsuc ℓ) where
+  isZero : (p : α ≅ ∅) → α IsNat 0
+  isSuc  : ∀{β n} (p : α OSucOf β) (q : β IsNat n) → α IsNat (suc n)
+
+isNat-subst : α ≅ β → α IsNat m → β IsNat m
+isNat-subst e (isZero p) = {!!}
+isNat-subst e (isSuc p p₁) = {!!}
+
+⊕-natural : α IsNat n → β IsNat m → (α ⊕ β) IsNat (n + m)
+⊕-natural (isZero p) q = {!!}
+⊕-natural (isSuc p p₁) q = {!!}
+
 
 -- Constructing ordinals
 
@@ -334,7 +392,7 @@ a₁Lim = limStruct osuc (λ g α → olim λ n → fold id (g ∘_) n α) (λ f
 
 
 -- -}
--- -}
+--
 -- -}
 -- -}
 -- -}
