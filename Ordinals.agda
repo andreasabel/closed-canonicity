@@ -197,6 +197,27 @@ inacc α = α , refl-≤
 _⊕_ : (α β : Ord ℓ) → Ord ℓ
 α@(sup{I = I}f) ⊕ β@(sup{I = J}g) = sup {I = I ⊎ J} [ (λ i → f i ⊕ β) , (λ j → α ⊕ g j) ]′
 
+-- Associativity
+
+assoc-⊕-≤ : ((α ⊕ β) ⊕ γ) ≤ (α ⊕ (β ⊕ γ))
+assoc-⊕-≤ {α = sup f} {β = sup g} {γ = sup h} (inj₁ (inj₁ i)) = inj₁ i        , assoc-⊕-≤
+assoc-⊕-≤ {α = sup f} {β = sup g} {γ = sup h} (inj₁ (inj₂ j)) = inj₂ (inj₁ j) , assoc-⊕-≤
+assoc-⊕-≤ {α = sup f} {β = sup g} {γ = sup h} (inj₂ k       ) = inj₂ (inj₂ k) , assoc-⊕-≤
+
+assoc-⊕-≥ : ((α ⊕ β) ⊕ γ) ≥ (α ⊕ (β ⊕ γ))
+assoc-⊕-≥ {α = sup f} {β = sup g} {γ = sup h} (inj₁ i       ) = inj₁ (inj₁ i) , assoc-⊕-≥
+assoc-⊕-≥ {α = sup f} {β = sup g} {γ = sup h} (inj₂ (inj₁ j)) = inj₁ (inj₂ j) , assoc-⊕-≥
+assoc-⊕-≥ {α = sup f} {β = sup g} {γ = sup h} (inj₂ (inj₂ k)) = inj₂ k        , assoc-⊕-≥
+
+assoc-⊕ : ((α ⊕ β) ⊕ γ) ≅ (α ⊕ (β ⊕ γ))
+assoc-⊕ = assoc-⊕-≤ , assoc-⊕-≥
+
+-- Commutativity
+
+comm-⊕-≤ : (α ⊕ β) ≤ (β ⊕ α)
+comm-⊕-≤ {α = sup f} {β = sup g} (inj₁ i) = inj₂ i , comm-⊕-≤
+comm-⊕-≤ {α = sup f} {β = sup g} (inj₂ j) = inj₁ j , comm-⊕-≤
+
 -- ∅ is left unit for ⊕
 
 zero⊕-≤ : (∅ ⊕ β) ≤ β
