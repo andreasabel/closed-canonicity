@@ -4,6 +4,8 @@
 -- See https://homotopytypetheory.org/2014/02/22/surreals-plump-ordinals/
 
 open import Library
+open import Data.W
+open import Data.Container.Core
 
 data Ord ℓ : Type (lsuc ℓ) where
   sup : ∀{I : Type ℓ} (f : I → Ord ℓ) → Ord ℓ
@@ -450,6 +452,39 @@ a₁Lim = limStruct osuc (λ g α → olim λ n → fold id (g ∘_) n α) (λ f
 ω^_ : ℕ → Ord ℓ
 ω^ zero = ω
 ω^ (suc n) = ω^ n
+
+
+-- Closure ordinals for W-types.
+
+module _ (A : Set ℓ) (B : A → Set ℓ) where
+
+  -- The ordinal height of a tree.
+
+  o : W (A ▷ B) → Ord ℓ
+  o (sup (a , f)) = sup {I = B a} (o ∘ f)
+
+  -- A closure ordinal for W A B is a strict upper bound
+  -- on the height of any possible tree.
+
+  IsClosure : (γ : Ord ℓ) → Type ℓ
+  IsClosure γ = ∀ (w : W (A ▷ B)) → o w < γ
+
+  -- The closure ordinal is literally constructed as the
+  -- strict upper bound on all tree heights.
+
+  closure : Ord ℓ
+  closure = sup {I = W (A ▷ B)} o
+
+  -- This is trivially a closure ordinal.
+
+  is-closure : (w : W (A ▷ B)) → o w < closure
+  is-closure w = w , refl-≤
+
+  -- It is also trivially the smallest such ordinal.
+
+  is-minimal : ∀ {γ} → IsClosure γ → closure ≤ γ
+  is-minimal cl w = cl w
+
 
 
 -- -}
