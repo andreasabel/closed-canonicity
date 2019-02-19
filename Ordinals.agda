@@ -62,6 +62,11 @@ refl-≤ {α = sup f} i = i , refl-≤
 refl-≅ : α ≅ α
 refl-≅ = refl-≤ , refl-≤
 
+-- Symmetry.
+
+sym-≅ : α ≅ β → β ≅ α
+sym-≅ (p , q) = (q , p)
+
 -- Embedding of < into ≤.
 
 mutual
@@ -87,6 +92,9 @@ trans-<-< : α < β → β < γ → α < γ
 trans-<-< p = trans-<-≤ p ∘ ≤-from-<
 -- trans-<-< {γ = sup f} p (i , q) = i , ≤-from-< (trans-<-≤ p q)
 
+trans-≅ : α ≅ β → β ≅ γ → α ≅ γ
+trans-≅ (p , p') (q , q') = trans-≤-≤ p q , trans-≤-≤ q' p'
+
 -- Well-foundedness.
 
 -- Antitonicity of accessibility.
@@ -108,6 +116,7 @@ acc-sup h = acc (λ γ p → let (i , γ≤fi) = p in acc-≤ γ≤fi (h i))
 ∅ = sup {I = Lift _ ⊥} λ()
 
 -- Zero as a predicate on ordinals
+-- (rather pointless enterprise).
 
 OZero : Ord ℓ → Type ℓ
 OZero α = ¬ Br α
@@ -166,6 +175,7 @@ osuc-cong-≤ = osuc-<-≤ ∘ osuc-≤-<
 
 
 -- Successor as a relation on ordinals
+-- FAILED ATTEMPT
 
 _OSucOf_ : (α β : Ord ℓ) → Type ℓ
 sup {I = I} f OSucOf β = I × ∀ i → f i ≅ β
@@ -177,8 +187,7 @@ oSucOf-subst-l : α ≅ β → α OSucOf γ → β OSucOf γ
 oSucOf-subst-l {α = sup f} {β = sup {I = J} g} (p₁ , p₂) (i , q) =
   let (j  , p₁') = p₁ i  in j , λ j' →
   let (i' , p₂') = p₂ j' in trans-≤-≤ p₂' (proj₁ (q i')) , {!trans-≤-≤ ? p₁'!}
-
--- Not provable
+-- NOT PROVABLE!
 --
 --  let (i , q') = p' i' in trans-≤-≤ q' (proj₁ (q i)) ,  trans-≤-≤ (proj₂ (q i)) {!p i!}
 
@@ -240,6 +249,30 @@ inacc α = α , refl-≤
 _⊕_ : (α β : Ord ℓ) → Ord ℓ
 α@(sup{I = I}f) ⊕ β@(sup{I = J}g) = sup {I = I ⊎ J} [ (λ i → f i ⊕ β) , (λ j → α ⊕ g j) ]′
 
+-- Left monotonicity:  If α ≤ β then α ⊕ γ ≤ β ⊕ γ.
+
+mon-⊕-l : α ≤ β → (α ⊕ γ) ≤ (β ⊕ γ)
+mon-⊕-l {α = sup f} {β = sup {I = J} g} {γ = sup {I = K} h} p (inj₁ i) = let (j , q) = p i in
+                                                                         inj₁ j , mon-⊕-l q
+mon-⊕-l {α = sup f} {β = sup {I = J} g} {γ = sup {I = K} h} p (inj₂ k) = inj₂ k , mon-⊕-l p
+
+-- Right monotonicity.
+
+mon-⊕-r : α ≤ β → (γ ⊕ α) ≤ (γ ⊕ β)
+mon-⊕-r {α = sup f} {β = sup {I = J} g} {γ = sup {I = K} h} p (inj₂ i) = let (j , q) = p i in
+                                                                         inj₂ j , mon-⊕-r q
+mon-⊕-r {α = sup f} {β = sup {I = J} g} {γ = sup {I = K} h} p (inj₁ k) = inj₁ k , mon-⊕-r p
+
+-- Left congruence.
+
+cong-⊕-l : α ≅ β → (α ⊕ γ) ≅ (β ⊕ γ)
+cong-⊕-l (α≤β , β≤α) = mon-⊕-l α≤β , mon-⊕-l β≤α
+
+-- Right congruence.
+
+cong-⊕-r : α ≅ β → (γ ⊕ α) ≅ (γ ⊕ β)
+cong-⊕-r (α≤β , β≤α) = mon-⊕-r α≤β , mon-⊕-r β≤α
+
 -- Associativity
 
 assoc-⊕-≤ : ((α ⊕ β) ⊕ γ) ≤ (α ⊕ (β ⊕ γ))
@@ -286,19 +319,47 @@ zero⊕ = zero⊕-≤ , zero⊕-≥
 ⊕zero : (α ⊕ ∅) ≅ α
 ⊕zero = ⊕zero-≤ , ⊕zero-≥
 
--- Finite ordinals
+-- Successor under sum.
+
+suc⊕-≥ : osuc (α ⊕ β) ≤ (osuc α ⊕ β)
+suc⊕-≥ {α = sup f} {β = sup g} _ = inj₁ _ ,
+  [ (λ i → inj₁ i , refl-≤)
+  , (λ i → inj₂ i , refl-≤)
+  ]
+
+suc⊕-≤ : (osuc α ⊕ β) ≤ osuc (α ⊕ β)
+suc⊕-≤ {α = sup f} {β = sup g} (inj₁ _) = _ ,
+  [ (λ i → inj₁ i , refl-≤)
+  , (λ i → inj₂ i , refl-≤)
+  ]
+suc⊕-≤ {α = sup f} {β = sup g} (inj₂ i) = _ ,
+  trans-≤-≤ (suc⊕-≤ {α = sup f} {β = g i})
+            λ _ → inj₂ i , refl-≤
+
+suc⊕-≅ : (osuc α ⊕ β) ≅ osuc (α ⊕ β)
+suc⊕-≅ = suc⊕-≤ , suc⊕-≥
+
+
+-- Finite ordinals.
 
 data _IsNat_ (α : Ord ℓ) : ℕ → Type (lsuc ℓ) where
   isZero : (p : α ≅ ∅) → α IsNat 0
-  isSuc  : ∀{β n} (p : α OSucOf β) (q : β IsNat n) → α IsNat (suc n)
+  isSuc  : ∀{β n} (p : α ≅ osuc β) (q : β IsNat n) → α IsNat (suc n)
+
+-- IsNat is a predicate on ordinals (invariant under ≅).
+
+isNat-subst' : α ≅ β → β IsNat m → α IsNat m
+isNat-subst' α≅β (isZero β≅∅)    = isZero (trans-≅ α≅β β≅∅)
+isNat-subst' α≅β (isSuc β≅γ+1 q) = isSuc (trans-≅ α≅β β≅γ+1) q
 
 isNat-subst : α ≅ β → α IsNat m → β IsNat m
-isNat-subst e (isZero p) = {!!}
-isNat-subst e (isSuc p p₁) = {!!}
+isNat-subst α≅β = isNat-subst' (sym-≅ α≅β)
+
+-- Natural sum is extension of sum of natural numbers.
 
 ⊕-natural : α IsNat n → β IsNat m → (α ⊕ β) IsNat (n + m)
-⊕-natural (isZero p) q = {!!}
-⊕-natural (isSuc p p₁) q = {!!}
+⊕-natural (isZero α≅∅)    q = isNat-subst' (trans-≅ (cong-⊕-l α≅∅) zero⊕) q
+⊕-natural (isSuc α≅β+1 p) q = isSuc (trans-≅ (cong-⊕-l α≅β+1) suc⊕-≅) (⊕-natural p q)
 
 
 -- Constructing ordinals
