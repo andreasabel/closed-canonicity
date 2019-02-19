@@ -20,7 +20,7 @@ open import Relation.Binary using (Setoid)
 import Relation.Binary.On as On
 import Relation.Binary.PropositionalEquality as PE
 
-Prop = Set
+prop = Set
 
 -- Raw syntax (well-scoped)
 
@@ -111,7 +111,7 @@ data Var : ∀{n} (Γ : Cxt n) (x : Fin n) (a : Exp n) → Set where
 
 mutual
 
-  data _⊢_∷_ : ∀{n} (Γ : Cxt n) (t a : Exp n) → Prop where
+  data _⊢_∷_ : ∀{n} (Γ : Cxt n) (t a : Exp n) → prop where
 
     var : ∀{n Γ} {a : Exp n} {x} (dx : Var Γ x a) → Γ ⊢ var x ∷ a
 
@@ -131,7 +131,7 @@ mutual
       → (de : Γ ⊢ e ∷ app C (bit false))
       → Γ ⊢ ifthen C c t e ∷ app C c
 
-  data _⊢_≡_∷_ : ∀{n} (Γ : Cxt n) (t t' a : Exp n) → Prop where
+  data _⊢_≡_∷_ : ∀{n} (Γ : Cxt n) (t t' a : Exp n) → prop where
 
     var :  ∀{n Γ} {a : Exp n} {x} (dx : Var Γ x a) → Γ ⊢ var x ≡ var x ∷ a
 
@@ -448,7 +448,7 @@ record FamEq {l a a'} {A : Type l a} {A' : Type l a'} (A=A' : TypeEq A A') {b b'
 
 -- We have to restrict the level of the context, since we do not have Setω
 
-data _⊢_ (l : ℕ) : ∀ {n} (Γ : Cxt n) → Prop where
+data _⊢_ (l : ℕ) : ∀ {n} (Γ : Cxt n) → prop where
 
   ε    : l ⊢ ε
 
